@@ -84,3 +84,24 @@ def test_encode_decode_capture_with_promotion():
     assert decoded["to_square"] == Square.A8
     assert decoded["captured_type"] == PieceType.ROOK
     assert decoded["promotion_type"] == PieceType.QUEEN
+
+def test_standard_position_metadata():
+    board = Board()
+    board.setup_standard_position()
+
+    assert board.side_to_move == Color.White
+    assert board.white_kingside_castle is True
+    assert board.white_queenside_castle is True
+    assert board.black_kingside_castle is True
+    assert board.black_queenside_castle is True
+    assert board.en_passant_square is None
+    assert board.halfmove_clock == 0
+    assert board.fullmove_number == 1
+
+
+def test_empty_board_has_neutral_defaults():
+    board = Board()
+
+    assert board.white_kingside_castle is False
+    assert board.en_passant_square is None
+    assert board.halfmove_clock == 0

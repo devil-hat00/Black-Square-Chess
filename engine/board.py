@@ -27,6 +27,21 @@ class Board:
                Color.Black: {piece_type: 0 for piece_type in PieceType} ,
           }
 
+          self.side_to_move: Color = Color.White
+
+          self.white_kingside_castle: bool = False
+          self.white_queenside_castle: bool = False
+          self.black_kingside_castle: bool = False
+          self.black_queenside_castle: bool = False
+
+          self.en_passant_square: int | None = None
+
+          self.halfmove_clock: int = 0
+          self.fullmove_number: int = 1
+
+
+
+
      def get_bitboard(self, color:Color, piece_type: PieceType) -> int:
         """Returns the bitboard for a given color and piece type."""
         return self.pieces[color][piece_type]
@@ -68,6 +83,15 @@ class Board:
         # Kings
              self.set_piece(Color.White, PieceType.KING, Square.E1)
              self.set_piece(Color.Black, PieceType.KING, Square.E8)
+
+             self.side_to_move = Color.White
+             self.white_kingside_castle = True
+             self.white_queenside_castle = True
+             self.black_kingside_castle = True
+             self.black_queenside_castle = True
+             self.en_passant_square = None
+             self.halfmove_clock = 0
+             self.fullmove_number = 1
     
      def piece_at(self, square: int) -> str | None:
             """
