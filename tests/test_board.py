@@ -1,5 +1,6 @@
 from engine.board import Board
 from engine.constants import Color, PieceType, Square
+from engine.move import encode_move, decode_move, MoveFlag, NO_PIECE
 
 def test_new_board_has_no_pieces():
     board = Board()
@@ -51,3 +52,35 @@ def test_piece_at_returns_none_for_empty_square():
     board.setup_standard_position()
     assert board.piece_at(Square.E4) == None
     assert board.piece_at(Square.H3) == None
+
+
+def test_encode_decode_simple_move():
+    move = encode_move(
+        from_square=Square.E2,
+        to_square=Square.E4,
+        piece_type=PieceType.PAWN,
+        flag=MoveFlag.DOUBLE_PAWN_PUSH,
+    )
+    decoded = decode_move(move)
+
+    assert decoded["from_square"] == Square.E2
+    assert decoded["to_square"] == Square.E4
+    assert decoded["piece_type"] == PieceType.PAWN
+    assert decoded["captured_type"] == NO_PIECE
+    assert decoded["flag"] == MoveFlag.DOUBLE_PAWN_PUSH
+
+
+def test_encode_decode_capture_with_promotion():
+    move = encode_move(
+        from_square=Square.B7,
+        to_square=Square.A8,
+        piece_type=PieceType.PAWN,
+        captured_type=PieceType.ROOK,
+        promotion_type=PieceType.QUEEN,
+    )
+    decoded = decode_move(move)
+
+    assert decoded["from_square"] == Square.B7
+    assert decoded["to_square"] == Square.A8
+    assert decoded["captured_type"] == PieceType.ROOK
+    assert decoded["promotion_type"] == PieceType.QUEEN
