@@ -9,7 +9,6 @@ PIECE_SYMBOLS = {
     PieceType.KING: 'k' ,
 }
 
-
 class Board:
 
      """

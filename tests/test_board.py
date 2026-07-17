@@ -1,6 +1,7 @@
 from engine.board import Board
 from engine.constants import Color, PieceType, Square
 from engine.move import encode_move, decode_move, MoveFlag, NO_PIECE
+from engine.fen import parse_piece_placement
 
 def test_new_board_has_no_pieces():
     board = Board()
@@ -105,3 +106,24 @@ def test_empty_board_has_neutral_defaults():
     assert board.white_kingside_castle is False
     assert board.en_passant_square is None
     assert board.halfmove_clock == 0
+
+
+def test_parse_standard_starting_placement():
+    board = Board()
+    parse_piece_placement(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+
+    assert board.piece_at(Square.A8) == "r"
+    assert board.piece_at(Square.E8) == "k"
+    assert board.piece_at(Square.A1) == "R"
+    assert board.piece_at(Square.E1) == "K"
+    assert board.piece_at(Square.E4) is None  # empty in starting position
+
+
+def test_parse_placement_with_mixed_empty_squares():
+    board = Board()
+    # 4 empty, black king, 3 empty on rank 8; rest empty
+    parse_piece_placement(board, "4k3/8/8/8/8/8/8/8")
+
+    assert board.piece_at(Square.E8) == "k"
+    assert board.piece_at(Square.A8) is None
+    assert board.piece_at(Square.H8) is None

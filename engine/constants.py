@@ -48,3 +48,19 @@ class PieceType(IntEnum):
     ROOK = 3
     QUEEN = 4
     KING = 5
+
+
+FEN_PIECE_MAP: dict[str, tuple[Color, PieceType]] = {
+    'P': (Color.White, PieceType.PAWN),
+    'R': (Color.White, PieceType.ROOK),
+    'N': (Color.White, PieceType.KNIGHT),
+    'B': (Color.White, PieceType.BISHOP),
+    'Q': (Color.White, PieceType.QUEEN),
+    'K': (Color.White, PieceType.KING),
+    'p': (Color.Black, PieceType.PAWN),
+    'r': (Color.Black, PieceType.ROOK),
+    'n': (Color.Black, PieceType.KNIGHT),
+    'b': (Color.Black, PieceType.BISHOP),
+    'q': (Color.Black, PieceType.QUEEN),
+    'k': (Color.Black, PieceType.KING),
+}
