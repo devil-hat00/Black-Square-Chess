@@ -37,6 +37,14 @@ def rank_file_to_square(rank: int,file: int)-> int:
 
         return rank * 8 + file
 
+def square_from_algebraic(notation: str) -> int:
+    """
+    Converts algebraic notation (e.g. 'e3') into a square index.
+    """
+    file = ord(notation[0]) - ord("a")
+    rank = int(notation[1]) - 1
+    return rank_file_to_square(rank, file)
+
 class Color(IntEnum):
     White = 0
     Black = 1
