@@ -299,3 +299,6 @@ class Board:
             self.fullmove_number -= 1
 
         self.side_to_move = color
+
+
+    

@@ -6,7 +6,8 @@ from engine.move_generation import (
     generate_knight_moves, generate_king_moves,
     knight_attacks_from_square, king_attacks_from_square,
     generate_rook_moves, generate_bishop_moves, generate_queen_moves,
-    generate_pawn_moves, is_square_attacked, is_king_in_check
+    generate_pawn_moves, is_square_attacked, is_king_in_check,
+    generate_legal_moves, is_checkmate, is_stalemate,
 )
 
 def test_new_board_has_no_pieces():
@@ -586,3 +587,69 @@ def test_unmake_restores_castling_rights():
 
     assert board.white_kingside_castle is True
     assert board.white_queenside_castle is True
+
+
+def test_legal_moves_excludes_moves_that_leave_king_in_check():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.White, PieceType.ROOK, Square.E4)
+    board.set_piece(Color.Black, PieceType.ROOK, Square.E8)
+    board.side_to_move = Color.White
+    # White rook is pinned - moving it off the e-file would expose the king to check
+
+    moves = generate_legal_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    rook_moves = [m for m in decoded if m["piece_type"] == PieceType.ROOK]
+
+    # The pinned rook can only move along the e-file (toward or capturing the attacker)
+    for m in rook_moves:
+        _, to_file = square_to_rank_file(m["to_square"])
+        assert to_file == 4  # e-file
+
+
+def test_checkmate_scapegoat_position():
+    # Fool's mate style back-rank mate setup
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.H1)
+    board.set_piece(Color.White, PieceType.PAWN, Square.F2)
+    board.set_piece(Color.White, PieceType.PAWN, Square.G2)
+    board.set_piece(Color.White, PieceType.PAWN, Square.H2)
+    board.set_piece(Color.Black, PieceType.QUEEN, Square.H4)
+    board.set_piece(Color.Black, PieceType.KING, Square.E8)
+    board.side_to_move = Color.White
+    board.en_passant_square = None
+
+    # Queen delivers mate on h-file/h2-h1 diagonal isn't quite right geometrically;
+    # use a simple, verifiable back-rank mate instead:
+    board2 = Board()
+    board2.set_piece(Color.White, PieceType.KING, Square.G1)
+    board2.set_piece(Color.White, PieceType.PAWN, Square.F2)
+    board2.set_piece(Color.White, PieceType.PAWN, Square.G2)
+    board2.set_piece(Color.White, PieceType.PAWN, Square.H2)
+    board2.set_piece(Color.Black, PieceType.ROOK, Square.A1)
+    board2.side_to_move = Color.White
+
+    assert is_checkmate(board2, Color.White) is True
+    assert is_stalemate(board2, Color.White) is False
+
+
+def test_stalemate_position():
+    # Classic king-in-corner stalemate: Black king a8, White king c7, White queen b6
+    board = Board()
+    board.set_piece(Color.Black, PieceType.KING, Square.A8)
+    board.set_piece(Color.White, PieceType.KING, Square.C7)
+    board.set_piece(Color.White, PieceType.QUEEN, Square.B6)
+    board.side_to_move = Color.Black
+
+    assert is_stalemate(board, Color.Black) is True
+    assert is_checkmate(board, Color.Black) is False
+
+
+def test_king_not_in_check_has_legal_moves():
+    board = Board()
+    board.setup_standard_position()
+
+    moves = generate_legal_moves(board, Color.White)
+    assert len(moves) == 20  # standard opening move count
+    assert is_checkmate(board, Color.White) is False
+    assert is_stalemate(board, Color.White) is False

@@ -325,3 +325,33 @@ def is_king_in_check(board: Board, color: Color) -> bool:
     opponent_color = Color.Black if color == Color.White else Color.White
     king_square = next(iterate_set_bits(board.pieces[color][PieceType.KING]))
     return is_square_attacked(board, king_square, opponent_color)
+
+
+def generate_legal_moves(board: Board, color:Color) -> list[int]:
+    """Filters pseudo-legal moves down to fully legal moves (king not left in check)."""
+    pseudo_legal_moves = (
+        generate_knight_moves(board, color)
+        + generate_king_moves(board, color)
+        + generate_rook_moves(board, color)
+        + generate_bishop_moves(board, color)
+        + generate_queen_moves(board, color)
+        + generate_pawn_moves(board, color)
+    )
+
+    legal_moves = []
+    for move in pseudo_legal_moves:
+        board.make_move(move)
+        if not is_king_in_check(board, color):
+            legal_moves.append(move)
+        board.unmake_move(move)
+
+    return legal_moves
+
+
+def is_checkmate(board: Board, color: Color) -> bool:
+    """Returns True if 'color' has no legal moves and is currently in check."""
+    return len(generate_legal_moves(board, color)) == 0 and is_king_in_check(board, color)
+
+def is_stalemate(board: Board, color: Color) -> bool:
+    """Returns True is 'color' has no legal moves and is NOT currently in check"""
+    return len(generate_legal_moves(board, color)) == 0 and not is_king_in_check(board, color)
