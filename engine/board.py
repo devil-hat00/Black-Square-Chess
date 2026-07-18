@@ -1,4 +1,5 @@
 from engine.constants import Color, PieceType, Square
+from engine.move import decode_move, NO_PIECE
 
 PIECE_SYMBOLS = {
     PieceType.PAWN: 'p',
@@ -37,6 +38,8 @@ class Board:
 
           self.halfmove_clock: int = 0
           self.fullmove_number: int = 1
+
+          self.undo_stack: list[UndoInfo] = []
 
 
 
@@ -134,3 +137,121 @@ class Board:
                if self.pieces[color][piece_type] & (1 << square):
                     return piece_type
           return None
+     
+     def make_move(self, move: int) -> None:
+        """Applies a move to the board, updating all state. Pushes undo info."""
+        decoded = decode_move(move)
+        from_square = decoded["from_square"]
+        to_square = decoded["to_square"]
+        piece_type = PieceType(decoded["piece_type"])
+        captured_type_raw = decoded["captured_type"]
+        promotion_type_raw = decoded["promotion_type"]
+
+        color = self.side_to_move
+        opponent_color = Color.Black if color == Color.White else Color.White
+
+        captured_piece_type = None
+        captured_color = None
+        if captured_type_raw != NO_PIECE:
+            captured_piece_type = PieceType(captured_type_raw)
+            captured_color = opponent_color
+            self.pieces[opponent_color][captured_piece_type] &= ~(1 << to_square)
+
+        undo_info = UndoInfo(
+            captured_piece_type=captured_piece_type,
+            captured_color=captured_color,
+            previous_white_kingside_castle=self.white_kingside_castle,
+            previous_white_queenside_castle=self.white_queenside_castle,
+            previous_black_kingside_castle=self.black_kingside_castle,
+            previous_black_queenside_castle=self.black_queenside_castle,
+            previous_en_passant_square=self.en_passant_square,
+            previous_halfmove_clock=self.halfmove_clock,
+        )
+
+        self.pieces[color][piece_type] &= ~(1 << from_square)
+        final_piece_type = PieceType(promotion_type_raw) if promotion_type_raw != NO_PIECE else piece_type
+        self.pieces[color][final_piece_type] |= (1 << to_square)
+
+        if captured_piece_type is not None or piece_type == PieceType.PAWN:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+
+        if color == Color.Black:
+            self.fullmove_number += 1
+
+        self.side_to_move = opponent_color
+        self.undo_stack.append(undo_info)
+     
+
+class UndoInfo:
+     """Captures everything needed to reverse a single make_move call."""
+
+     def __init__(
+               self,
+               captured_piece_type : PieceType | None,
+               captured_color : Color | None,
+               previous_white_kingside_castle : bool,
+               previous_white_queenside_castle : bool,
+               previous_black_kingside_castle : bool,
+               previous_black_queenside_castle : bool,
+               previous_en_passant_square: int | None,
+               previous_halfmove_clock: int,
+     ) -> None:
+          self.captured_piece_type = captured_piece_type
+          self.captured_color = captured_color
+          self.previous_white_kingside_castle = previous_white_kingside_castle
+          self.previous_white_queenside_castle = previous_white_queenside_castle
+          self.previous_black_kingside_castle = previous_black_kingside_castle
+          self.previous_black_queenside_castle = previous_black_queenside_castle
+          self.previous_en_passant_square = previous_en_passant_square
+          self.previous_halfmove_clock = previous_halfmove_clock
+
+     
+     def make_move(self, move: int) -> None:
+          """Applies a move to the board, updating all state. Pushes undo info."""
+          decoded = decode_move(move)
+          from_square = decoded["from_square"]
+          to_square = decoded["to_square"]
+          piece_type = PieceType(decoded["piece_type"])
+          captured_type_raw = decoded["captured_type"]
+          promotion_type_raw = decoded["promotion_type"]
+
+          color = self.side_to_move
+          opponent_color = Color.Black if color == Color.White else Color.White
+
+          self.captured_piece_type = None
+          self.captured_color = None
+          if captured_type_raw != NO_PIECE:
+               captured_piece_type = PieceType(captured_type_raw)
+               captured_color = opponent_color
+               self.pieces[opponent_color][captured_piece_type] &= ~(1 << to_square)
+
+          undo_info = UndoInfo(
+               captured_piece_type=captured_piece_type,
+               captured_color=captured_color,
+               previous_white_kingside_castle=self.white_kingside_castle,
+               previous_white_queenside_castle=self.white_queenside_castle,
+               previous_black_kingside_castle=self.black_kingside_castle,
+               previous_black_queenside_castle=self.black_queenside_castle,
+               previous_en_passant_square=self.en_passant_square,
+               previous_halfmove_clock=self.halfmove_clock,
+          )
+
+          # Remove piece from the origin, place at destination (handle promotion)
+          self.pieces[color][piece_type] &= ~(1 << from_square)
+          final_piece_type = PieceType(promotion_type_raw) if promotion_type_raw != NO_PIECE else piece_type
+          self.pieces[color][final_piece_type] |= (1 << to_square)
+
+          # Halfmove clock: reset on capture or pawn move, else increment
+          if captured_piece_type is not None or piece_type == PieceType.PAWN:
+               self.halfmove_clock = 0
+          else:
+               self.halfmove_clock += 1
+
+          # Fullmove number increments after Black moves
+          if color == Color.Black:
+               self.fullmove_number += 1
+
+          self.side_to_move = opponent_color
+          self.undo_stack.append(undo_info)

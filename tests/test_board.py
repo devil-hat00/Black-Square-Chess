@@ -405,3 +405,43 @@ def test_king_in_check_from_rook():
     board.set_piece(Color.White, PieceType.KING, Square.E1)
     board.set_piece(Color.Black, PieceType.ROOK, Square.E8)
     assert is_king_in_check(board, Color.White) is True
+
+
+def test_make_move_simple_push():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E2)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E2, Square.E3, PieceType.PAWN)
+    board.make_move(move)
+
+    assert board.piece_at(Square.E2) is None
+    assert board.piece_at(Square.E3) == "P"
+    assert board.side_to_move == Color.Black
+    assert board.halfmove_clock == 0  # pawn move resets clock
+
+
+def test_make_move_capture_removes_captured_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F6)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E4, Square.F6, PieceType.KNIGHT, captured_type=PieceType.PAWN)
+    board.make_move(move)
+
+    assert board.piece_at(Square.F6) == "N"
+    assert board.get_bitboard(Color.Black, PieceType.PAWN) == 0
+    assert board.halfmove_clock == 0  # capture resets clock
+
+
+def test_make_move_pushes_undo_info():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E2)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E2, Square.E3, PieceType.PAWN)
+    board.make_move(move)
+
+    assert len(board.undo_stack) == 1
+    assert board.undo_stack[0].captured_piece_type is None
