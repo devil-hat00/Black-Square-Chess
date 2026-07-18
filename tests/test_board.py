@@ -445,3 +445,69 @@ def test_make_move_pushes_undo_info():
 
     assert len(board.undo_stack) == 1
     assert board.undo_stack[0].captured_piece_type is None
+
+def test_make_move_en_passant_removes_correct_pawn():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E5)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.D5)
+    board.side_to_move = Color.White
+    board.en_passant_square = Square.D6
+
+    move = encode_move(Square.E5, Square.D6, PieceType.PAWN, captured_type=PieceType.PAWN, flag=MoveFlag.EN_PASSANT)
+    board.make_move(move)
+
+    assert board.piece_at(Square.D6) == "P"
+    assert board.piece_at(Square.D5) is None  # captured pawn removed, not on destination square
+
+
+def test_make_move_castling_kingside_moves_rook():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.White, PieceType.ROOK, Square.H1)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E1, Square.G1, PieceType.KING, flag=MoveFlag.CASTLE_KINGSIDE)
+    board.make_move(move)
+
+    assert board.piece_at(Square.G1) == "K"
+    assert board.piece_at(Square.F1) == "R"
+    assert board.piece_at(Square.H1) is None
+
+
+def test_king_move_revokes_both_castling_rights():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.side_to_move = Color.White
+    board.white_kingside_castle = True
+    board.white_queenside_castle = True
+
+    move = encode_move(Square.E1, Square.E2, PieceType.KING)
+    board.make_move(move)
+
+    assert board.white_kingside_castle is False
+    assert board.white_queenside_castle is False
+
+
+def test_rook_capture_revokes_castling_right():
+    board = Board()
+    board.set_piece(Color.White, PieceType.ROOK, Square.H1)
+    board.set_piece(Color.Black, PieceType.BISHOP, Square.A8)  # just to have a piece
+    board.white_kingside_castle = True
+    board.side_to_move = Color.Black
+
+    # Black bishop captures the white rook on h1 (not realistic geometry, just testing the rights logic)
+    move = encode_move(Square.A8, Square.H1, PieceType.BISHOP, captured_type=PieceType.ROOK)
+    board.make_move(move)
+
+    assert board.white_kingside_castle is False
+
+
+def test_double_push_sets_en_passant_square():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E2)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E2, Square.E4, PieceType.PAWN, flag=MoveFlag.DOUBLE_PAWN_PUSH)
+    board.make_move(move)
+
+    assert board.en_passant_square == Square.E3
