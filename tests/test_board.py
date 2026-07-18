@@ -2,7 +2,12 @@ from engine.board import Board
 from engine.constants import Color, PieceType, Square
 from engine.move import encode_move, decode_move, MoveFlag, NO_PIECE
 from engine.fen import *
-from engine.move_generation import generate_knight_moves
+from engine.move_generation import (
+    generate_knight_moves, generate_king_moves,
+    knight_attacks_from_square, king_attacks_from_square,
+    generate_rook_moves, generate_bishop_moves, generate_queen_moves,
+    generate_pawn_moves,
+)
 
 def test_new_board_has_no_pieces():
     board = Board()
@@ -240,3 +245,126 @@ def test_knight_move_captures_opponent_piece():
 
     capture = next(m for m in decoded if m["to_square"] == Square.F6)
     assert capture["captured_type"] == PieceType.PAWN
+
+
+def test_king_attacks_from_center_square():
+    # King on E4 should reach exactly 8 surrounding squares
+    attacks = king_attacks_from_square(Square.E4)
+    assert bin(attacks).count("1") == 8
+
+
+def test_king_attacks_from_corner_square():
+    # King on A1 (corner) can only reach 3 squares
+    attacks = king_attacks_from_square(Square.A1)
+    assert bin(attacks).count("1") == 3
+    assert attacks & (1 << Square.A2)
+    assert attacks & (1 << Square.B1)
+    assert attacks & (1 << Square.B2)
+
+
+def test_king_moves_from_starting_position():
+    board = Board()
+    board.setup_standard_position()
+
+    moves = generate_king_moves(board, Color.White)
+    # King is fully boxed in by its own pieces at the start - zero legal moves
+    assert len(moves) == 0
+
+
+def test_king_move_captures_opponent_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.E5)
+
+    moves = generate_king_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+
+    capture = next(m for m in decoded if m["to_square"] == Square.E5)
+    assert capture["captured_type"] == PieceType.PAWN
+
+
+def test_rook_moves_on_empty_board():
+    board = Board()
+    board.set_piece(Color.White, PieceType.ROOK, Square.D4)
+    moves = generate_rook_moves(board, Color.White)
+    assert len(moves) == 14  # full rank + full file, minus itself
+
+
+def test_rook_blocked_by_own_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.ROOK, Square.A1)
+    board.set_piece(Color.White, PieceType.PAWN, Square.A3)
+    moves = generate_rook_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    destinations = [m["to_square"] for m in decoded]
+    assert Square.A2 in destinations
+    assert Square.A3 not in destinations  # own piece, can't land there
+    assert Square.A4 not in destinations  # blocked beyond it
+
+
+def test_bishop_captures_enemy_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.BISHOP, Square.C1)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F4)
+    moves = generate_bishop_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    capture = next(m for m in decoded if m["to_square"] == Square.F4)
+    assert capture["captured_type"] == PieceType.PAWN
+    beyond = [m for m in decoded if m["to_square"] == Square.G5]
+    assert beyond == []  # can't continue past a captured piece
+
+
+def test_queen_combines_rook_and_bishop_moves():
+    board = Board()
+    board.set_piece(Color.White, PieceType.QUEEN, Square.D4)
+    moves = generate_queen_moves(board, Color.White)
+    assert len(moves) == 14 + 13  # rook-style + bishop-style from d4 on empty board
+
+
+def test_pawn_single_and_double_push_from_start():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E2)
+    moves = generate_pawn_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    destinations = [m["to_square"] for m in decoded]
+    assert Square.E3 in destinations
+    assert Square.E4 in destinations
+    assert len(moves) == 2
+
+
+def test_pawn_cannot_double_push_after_moving_from_start_rank():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E3)  # not on starting rank
+    moves = generate_pawn_moves(board, Color.White)
+    assert len(moves) == 1
+
+
+def test_pawn_diagonal_capture():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.D5)
+    moves = generate_pawn_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    capture = next(m for m in decoded if m["to_square"] == Square.D5)
+    assert capture["captured_type"] == PieceType.PAWN
+
+
+def test_pawn_promotion_generates_four_moves():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E7)
+    moves = generate_pawn_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    promotions = [m["promotion_type"] for m in decoded if m["to_square"] == Square.E8]
+    assert set(promotions) == {PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT}
+
+
+def test_pawn_en_passant_capture():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E5)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.D5)
+    board.en_passant_square = Square.D6
+    moves = generate_pawn_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+    ep_move = next(m for m in decoded if m["to_square"] == Square.D6)
+    assert ep_move["flag"] == MoveFlag.EN_PASSANT
+    assert ep_move["captured_type"] == PieceType.PAWN
