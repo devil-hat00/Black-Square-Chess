@@ -198,3 +198,23 @@ def test_round_trip_custom_position():
 
     result_fen = board_to_fen(board)
     assert result_fen == original_fen
+
+def test_knight_attacks_from_center_square():
+    # Knight on E4 (square 28) should reach exactly 8 squares
+    attacks = knight_attacks_from_square(Square.E4)
+    expected_squares = [
+        Square.D6, Square.F6, Square.C5, Square.G5,
+        Square.C3, Square.G3, Square.D2, Square.F2,
+    ]
+    for sq in expected_squares:
+        assert attacks & (1 << sq), f"Expected {sq} to be reachable"
+
+    assert bin(attacks).count("1") == 8
+
+
+def test_knight_attacks_from_corner_square():
+    # Knight on A1 (corner) can only reach 2 squares
+    attacks = knight_attacks_from_square(Square.A1)
+    assert bin(attacks).count("1") == 2
+    assert attacks & (1 << Square.B3)
+    assert attacks & (1 << Square.C2)

@@ -1,5 +1,5 @@
 from engine.board import Board
-from engine.constants import FEN_PIECE_MAP, rank_file_to_square, Square, Color, square_from_algebraic, algebraic_from_square
+from engine.constants import FEN_PIECE_MAP, rank_file_to_square, Square, Color, square_from_algebraic, algebraic_from_square, square_to_rank_file
 
 def parse_piece_placement(board: Board, placement_field: str) -> None:
     """Parses the piece-placement field of a FEN string and populates
@@ -128,4 +128,31 @@ def board_to_fen(board: Board) -> str:
         en_passant = en_passant = algebraic_from_square(board.en_passant_square)
 
     return f"{placement} {side} {castling} {en_passant} {board.halfmove_clock} {board.fullmove_number}"
+
+
+def knight_attacks_from_square(square: int) -> int:
+    """
+    Computes the bitboard of all squares a knight on `square`
+    could move to, ignoring occupancy (pure geometry).
+    """
+    rank, file = square_to_rank_file(square)
+    attack = 0
+
+    offsets = [
+        (1, 2), (2, 1), (1, -2), (2, -1),
+        (-1, 2), (-2, 1), (-1, -2), (-2, -1),
+    ]
+
+    for file_offset, rank_offset in offsets:
+        new_file = file + file_offset
+        new_rank = rank + rank_offset
+
+
+        if 0 <= new_file <= 7 and 0 <= new_rank <= 7:
+            target_square = rank_file_to_square(new_rank, new_file)
+            attack |= (1 << target_square)
+
+
+    return attack
+
  
