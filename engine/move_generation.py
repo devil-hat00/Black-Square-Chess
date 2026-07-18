@@ -253,3 +253,75 @@ def _add_pawn_move(moves: list[int], from_square: int, to_square: int, color: Co
     else:
         move = encode_move(from_square, to_square, PieceType.PAWN, captured_type=captured_type)
         moves.append(move)
+
+
+def pawn_attacks_from_square(square: int, color: Color) -> int:
+    """
+    Returns the bitboard of squares a pawn on `square` diagonally attacks,
+    regardless of whether those squares are actually occupied.
+    """
+    rank, file = square_to_rank_file(square)
+    attacks = 0
+
+    capture_offsets = [7, 9] if color == Color.White else [-7, -9]
+
+    for offset in capture_offsets:
+        target_square = square + offset
+        if not (0 <= target_square <= 63):
+            continue
+
+        target_rank, target_file = square_to_rank_file(target_square)
+        if abs(target_file - file) != 1:
+            continue # prevents wraparound, same check as generate_pawn_moves
+
+        attacks |= (1 << target_square)
+
+    return attacks
+
+def is_square_attacked(board: Board, square: int, by_color: Color) -> bool:
+    """
+    Returns True if `square` is attacked by any piece of `by_color`.
+    """
+    # Knight attacks
+    knight_bitboard = board.pieces[by_color][PieceType.KNIGHT]
+    for knight_square in iterate_set_bits(knight_bitboard):
+        if KNIGHT_ATTACKS[knight_square] & (1 << square):
+            return True
+        
+    # King attacks
+    king_bitboard = board.pieces[by_color][PieceType.KING]
+    for king_square in iterate_set_bits(king_bitboard):
+        if KING_ATTACKS[king_square] & (1 << square):
+            return True
+        
+    # Pawn attacks
+    pawn_bitboard = board.pieces[by_color][PieceType.PAWN]
+    for pawn_square in iterate_set_bits(pawn_bitboard):
+        if pawn_attacks_from_square(pawn_square, by_color) & (1 << square):
+            return True
+        
+    # Sliding pieces (rook/bishop/queen)
+    occupied = board.occupied_by_color(Color.White) | board.occupied_by_color(Color.Black)
+
+    rook_bitboard = board.pieces[by_color][PieceType.ROOK]
+    for rook_square in iterate_set_bits(rook_bitboard):
+        if sliding_attacks_from_square(rook_square, ROOK_DIRECTIONS, occupied) & (1 << square):
+            return True
+
+    bishop_bitboard = board.pieces[by_color][PieceType.BISHOP]
+    for bishop_square in iterate_set_bits(bishop_bitboard):
+        if sliding_attacks_from_square(bishop_square, BISHOP_DIRECTIONS, occupied) & (1 << square):
+            return True
+
+    queen_bitboard = board.pieces[by_color][PieceType.QUEEN]
+    for queen_square in iterate_set_bits(queen_bitboard):
+        if sliding_attacks_from_square(queen_square, QUEEN_DIRECTIONS, occupied) & (1 << square):
+            return True
+
+    return False
+
+def is_king_in_check(board: Board, color: Color) -> bool:
+    """Returns True if the king of `color` is currently in check."""
+    opponent_color = Color.Black if color == Color.White else Color.White
+    king_square = next(iterate_set_bits(board.pieces[color][PieceType.KING]))
+    return is_square_attacked(board, king_square, opponent_color)

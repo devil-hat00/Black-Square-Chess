@@ -6,7 +6,7 @@ from engine.move_generation import (
     generate_knight_moves, generate_king_moves,
     knight_attacks_from_square, king_attacks_from_square,
     generate_rook_moves, generate_bishop_moves, generate_queen_moves,
-    generate_pawn_moves,
+    generate_pawn_moves, is_square_attacked, is_king_in_check
 )
 
 def test_new_board_has_no_pieces():
@@ -368,3 +368,40 @@ def test_pawn_en_passant_capture():
     ep_move = next(m for m in decoded if m["to_square"] == Square.D6)
     assert ep_move["flag"] == MoveFlag.EN_PASSANT
     assert ep_move["captured_type"] == PieceType.PAWN
+
+
+def test_square_attacked_by_knight():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    assert is_square_attacked(board, Square.F6, Color.White) is True
+    assert is_square_attacked(board, Square.E5, Color.White) is False
+
+
+def test_square_attacked_by_pawn_diagonal_only():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E4)
+    assert is_square_attacked(board, Square.D5, Color.White) is True
+    assert is_square_attacked(board, Square.F5, Color.White) is True
+    assert is_square_attacked(board, Square.E5, Color.White) is False  # straight ahead, not an attack
+
+
+def test_square_attacked_by_rook_blocked():
+    board = Board()
+    board.set_piece(Color.White, PieceType.ROOK, Square.A1)
+    board.set_piece(Color.White, PieceType.PAWN, Square.A3)
+    assert is_square_attacked(board, Square.A2, Color.White) is True
+    assert is_square_attacked(board, Square.A4, Color.White) is False  # blocked by own pawn
+
+
+def test_king_not_in_check_on_empty_board():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.Black, PieceType.KING, Square.E8)
+    assert is_king_in_check(board, Color.White) is False
+
+
+def test_king_in_check_from_rook():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.Black, PieceType.ROOK, Square.E8)
+    assert is_king_in_check(board, Color.White) is True
