@@ -240,3 +240,62 @@ class Board:
 
         self.side_to_move = opponent_color
         self.undo_stack.append(undo_info)
+
+
+    def unmake_move(self, move: int) -> None:
+        """Reverses the most recent make_move call using the last UndoInfo."""
+        undo_info = self.undo_stack.pop()
+
+        decoded = decode_move(move)
+        from_square = decoded["from_square"]
+        to_square = decoded["to_square"]
+        piece_type = PieceType(decoded["piece_type"])
+        promotion_type_raw = decoded["promotion_type"]
+        flag = decoded["flag"]
+
+        color = Color.Black if self.side_to_move == Color.White else Color.White
+        opponent_color = self.side_to_move
+
+        # Move the piece back (undo promotion if it happened)
+        final_piece_type = PieceType(promotion_type_raw) if promotion_type_raw != NO_PIECE else piece_type
+        self.pieces[color][final_piece_type] &= ~(1 << to_square)
+        self.pieces[color][piece_type] |= (1 << from_square)
+
+        # Restore captured piece, if any
+        if undo_info.captured_piece_type is not None:
+            if flag == MoveFlag.EN_PASSANT:
+                captured_pawn_rank, _  = square_to_rank_file(from_square)
+                _, captured_pawn_file = square_to_rank_file(to_square)
+                captured_pawn_square = rank_file_to_square(captured_pawn_rank, captured_pawn_file)
+                self.pieces[undo_info.captured_color][undo_info.captured_piece_type] |= (1 << captured_pawn_square)
+            else:
+                self.pieces[undo_info.captured_color][undo_info.captured_piece_type] |= (1 << to_square)
+
+        # Undo castling rook movement
+        if flag == MoveFlag.CASTLE_KINGSIDE:
+            if color == Color.White:
+                self.pieces[Color.White][PieceType.ROOK] &= ~(1 << Square.F1)
+                self.pieces[Color.White][PieceType.ROOK] |= (1 << Square.H1)
+            else:
+                self.pieces[Color.Black][PieceType.ROOK] &= ~(1 << Square.F8)
+                self.pieces[Color.Black][PieceType.ROOK] |= (1 << Square.H8)
+        elif flag == MoveFlag.CASTLE_QUEENSIDE:
+            if color == Color.White:
+                self.pieces[Color.White][PieceType.ROOK] &= ~(1 << Square.D1)
+                self.pieces[Color.White][PieceType.ROOK] |= (1 << Square.A1)
+            else:
+                self.pieces[Color.Black][PieceType.ROOK] &= ~(1 << Square.D8)
+                self.pieces[Color.Black][PieceType.ROOK] |= (1 << Square.A8)
+
+        # Restore all snapshotted state
+        self.white_kingside_castle = undo_info.previous_white_kingside_castle
+        self.white_queenside_castle = undo_info.previous_white_queenside_castle
+        self.black_kingside_castle = undo_info.previous_black_kingside_castle
+        self.black_queenside_castle = undo_info.previous_black_queenside_castle
+        self.en_passant_square = undo_info.previous_en_passant_square
+        self.halfmove_clock = undo_info.previous_halfmove_clock
+
+        if color == Color.Black:
+            self.fullmove_number -= 1
+
+        self.side_to_move = color

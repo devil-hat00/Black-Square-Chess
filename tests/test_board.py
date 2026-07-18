@@ -511,3 +511,78 @@ def test_double_push_sets_en_passant_square():
     board.make_move(move)
 
     assert board.en_passant_square == Square.E3
+
+def test_unmake_simple_move_restores_board():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E2)
+    board.side_to_move = Color.White
+
+    original_fen = board_to_fen(board)  # snapshot before
+    move = encode_move(Square.E2, Square.E3, PieceType.PAWN)
+
+    board.make_move(move)
+    board.unmake_move(move)
+
+    assert board_to_fen(board) == original_fen
+    assert len(board.undo_stack) == 0
+
+
+def test_unmake_capture_restores_captured_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F6)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E4, Square.F6, PieceType.KNIGHT, captured_type=PieceType.PAWN)
+    board.make_move(move)
+    board.unmake_move(move)
+
+    assert board.piece_at(Square.E4) == "N"
+    assert board.piece_at(Square.F6) == "p"
+
+
+def test_unmake_en_passant_restores_captured_pawn():
+    board = Board()
+    board.set_piece(Color.White, PieceType.PAWN, Square.E5)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.D5)
+    board.side_to_move = Color.White
+    board.en_passant_square = Square.D6
+
+    move = encode_move(Square.E5, Square.D6, PieceType.PAWN, captured_type=PieceType.PAWN, flag=MoveFlag.EN_PASSANT)
+    board.make_move(move)
+    board.unmake_move(move)
+
+    assert board.piece_at(Square.E5) == "P"
+    assert board.piece_at(Square.D5) == "p"
+    assert board.piece_at(Square.D6) is None
+
+
+def test_unmake_castling_restores_rook():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.White, PieceType.ROOK, Square.H1)
+    board.side_to_move = Color.White
+
+    move = encode_move(Square.E1, Square.G1, PieceType.KING, flag=MoveFlag.CASTLE_KINGSIDE)
+    board.make_move(move)
+    board.unmake_move(move)
+
+    assert board.piece_at(Square.E1) == "K"
+    assert board.piece_at(Square.H1) == "R"
+    assert board.piece_at(Square.G1) is None
+    assert board.piece_at(Square.F1) is None
+
+
+def test_unmake_restores_castling_rights():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.side_to_move = Color.White
+    board.white_kingside_castle = True
+    board.white_queenside_castle = True
+
+    move = encode_move(Square.E1, Square.E2, PieceType.KING)
+    board.make_move(move)
+    board.unmake_move(move)
+
+    assert board.white_kingside_castle is True
+    assert board.white_queenside_castle is True
