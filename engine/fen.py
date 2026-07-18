@@ -1,5 +1,5 @@
 from engine.board import Board
-from engine.constants import FEN_PIECE_MAP, rank_file_to_square, Square, Color, square_from_algebraic
+from engine.constants import FEN_PIECE_MAP, rank_file_to_square, Square, Color, square_from_algebraic, algebraic_from_square
 
 def parse_piece_placement(board: Board, placement_field: str) -> None:
     """Parses the piece-placement field of a FEN string and populates
@@ -55,3 +55,77 @@ def parse_halfmove_clock(board: Board, field: str) -> None:
 def parse_fullmove_number(board: Board, field: str) -> None:
     """Parses the fullmove number (increments after Black's move)."""
     board.fullmove_number = int(field)
+
+
+def parse_fen(board: Board, fen: str) -> None:
+    """
+    Parses a complete FEN string and populates the given board.
+
+    A FEN string has 6 space-separated fields:
+    piece placement, side to move, castling rights,
+    en passant target, halfmove clock, fullmove number.
+    """
+    fields = fen.split(" ")
+    placement, side, castling, en_passant, halfmove, fullmove = fields
+
+    parse_piece_placement(board, placement)
+    parse_side_to_move(board, side)
+    parse_castling_rights(board, castling)
+    parse_en_passant(board, en_passant)
+    parse_halfmove_clock(board, halfmove)
+    parse_fullmove_number(board, fullmove)
+
+
+def piece_placement_to_fen(board: Board) -> str:
+    """Converts the board's piece positions into the FEN placement field."""
+    rank_strings = []
+
+    for rank in range(7, -1, -1): # rank 8 down to rank 1
+        rank_str = ""
+        empty_count = 0
+
+        for file in range(8):
+            square = rank * 8 + file
+            piece = board.piece_at(square)
+
+            if piece is None:
+                empty_count += 1
+            else:
+                if empty_count > 0:
+                    rank_str += str(empty_count)
+                    empty_count = 0
+                rank_str += piece
+
+        if empty_count > 0:
+            rank_str += str(empty_count)
+
+        rank_strings.append(rank_str)
+
+    return "/".join(rank_strings)
+
+
+def board_to_fen(board: Board) -> str:
+    """Converts the board's current state into a complete FEN string."""
+
+    placement = piece_placement_to_fen(board)
+    side = "w" if board.side_to_move == Color.White else "b"
+
+    castling = ""
+    if board.white_kingside_castle:
+        castling += "K"
+    if board.white_queenside_castle:
+        castling += "Q"
+    if board.black_kingside_castle:
+        castling += "k"
+    if board.black_queenside_castle:
+        castling += "q"
+    if castling == "":
+        castling = "-"  
+
+    if board.en_passant_square is None:
+        en_passant = "-"
+    else:
+        en_passant = en_passant = algebraic_from_square(board.en_passant_square)
+
+    return f"{placement} {side} {castling} {en_passant} {board.halfmove_clock} {board.fullmove_number}"
+ 

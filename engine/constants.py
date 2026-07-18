@@ -72,3 +72,10 @@ FEN_PIECE_MAP: dict[str, tuple[Color, PieceType]] = {
     'q': (Color.Black, PieceType.QUEEN),
     'k': (Color.Black, PieceType.KING),
 }
+
+def algebraic_from_square(square: int) -> str:
+    """Converts a square index into algebraic notation (e.g. 28 -> 'e4')."""
+    rank, file = square_to_rank_file(square)
+    file_letter = chr(ord("a") + file)
+    rank_number = rank + 1
+    return f"{file_letter}{rank_number}"

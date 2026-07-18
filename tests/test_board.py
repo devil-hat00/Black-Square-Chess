@@ -181,3 +181,20 @@ def test_parse_halfmove_and_fullmove():
     parse_fullmove_number(board, "12")
     assert board.halfmove_clock == 5
     assert board.fullmove_number == 12
+
+def test_round_trip_starting_position():
+    board = Board()
+    original_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    parse_fen(board, original_fen)
+
+    result_fen = board_to_fen(board)
+    assert result_fen == original_fen
+
+
+def test_round_trip_custom_position():
+    board = Board()
+    original_fen = "4k3/8/8/8/4P3/8/8/4K3 w - e3 5 12"
+    parse_fen(board, original_fen)
+
+    result_fen = board_to_fen(board)
+    assert result_fen == original_fen
