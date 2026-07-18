@@ -119,3 +119,18 @@ class Board:
                 row.append(piece if piece else '.')
             print(" ".join(row))
         print(" a b c d e f g h")
+
+
+     def occupied_by_color(self, color: Color) -> int:
+         """Returns a bitboard of all squares occupied by the given color's pieces."""
+         combined = 0
+         for piece_type in PieceType:
+             combined |= self.pieces[color][piece_type]
+         return combined
+     
+     def get_piece_type_at(self, color: Color, square: int) -> PieceType | None:
+          """Returns the PieceType at `square` for the given color, or None if absent."""
+          for piece_type in PieceType:
+               if self.pieces[color][piece_type] & (1 << square):
+                    return piece_type
+          return None

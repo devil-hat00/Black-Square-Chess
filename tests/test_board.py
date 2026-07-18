@@ -2,6 +2,7 @@ from engine.board import Board
 from engine.constants import Color, PieceType, Square
 from engine.move import encode_move, decode_move, MoveFlag, NO_PIECE
 from engine.fen import *
+from engine.move_generation import generate_knight_moves
 
 def test_new_board_has_no_pieces():
     board = Board()
@@ -218,3 +219,24 @@ def test_knight_attacks_from_corner_square():
     assert bin(attacks).count("1") == 2
     assert attacks & (1 << Square.B3)
     assert attacks & (1 << Square.C2)
+
+
+def test_knight_moves_from_starting_position():
+    board = Board()
+    board.setup_standard_position()
+
+    moves = generate_knight_moves(board, Color.White)
+    # In the starting position, each white knight has exactly 2 legal moves
+    assert len(moves) == 4  # 2 knights x 2 moves each
+
+
+def test_knight_move_captures_opponent_piece():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F6)
+
+    moves = generate_knight_moves(board, Color.White)
+    decoded = [decode_move(m) for m in moves]
+
+    capture = next(m for m in decoded if m["to_square"] == Square.F6)
+    assert capture["captured_type"] == PieceType.PAWN
