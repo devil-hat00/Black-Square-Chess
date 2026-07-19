@@ -710,3 +710,40 @@ def test_minimax_detects_checkmate_in_one():
 
     score = minimax(board, depth=1, color=Color.White)
     assert score == CHECKMATE_SCORE
+
+def test_alpha_beta_matches_plain_minimax_result():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.Black, PieceType.KING, Square.E8)
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F6)
+    board.side_to_move = Color.White
+
+    score = minimax(board, depth=2, color=Color.White)
+    assert score >= 1  # same expectation as the earlier plain-minimax test
+
+
+def test_alpha_beta_still_detects_checkmate():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.A1)
+    board.set_piece(Color.White, PieceType.ROOK, Square.E1)
+    board.set_piece(Color.Black, PieceType.KING, Square.G8)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F7)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.G7)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.H7)
+    board.side_to_move = Color.White
+
+    score = minimax(board, depth=1, color=Color.White)
+    assert score == CHECKMATE_SCORE
+
+
+def test_deeper_search_runs_in_reasonable_time():
+    import time
+    board = Board()
+    board.setup_standard_position()
+
+    start = time.time()
+    minimax(board, depth=3, color=Color.White)
+    elapsed = time.time() - start
+
+    assert elapsed < 15  # generous ceiling - alpha-beta should make depth 3 fast

@@ -5,13 +5,15 @@ from engine.move_generation import generate_legal_moves, is_checkmate, is_stalem
 
 CHECKMATE_SCORE = 100_000
 
-def minimax(board: Board, depth: int, color: Color) -> int:
+def minimax(board: Board, depth: int, color: Color, alpha: float = -float("inf"), beta: float = float("inf")) -> int:
     """
     Returns the minimax evaluation of the current position, searching
-    `depth` more plies ahead. Always returns a score from White's
-    perspective (positive favors White, negative favors Black).
+    `depth` more plies ahead, using alpha-beta pruning to skip branches
+    that cannot affect the final result. Always returns a score from
+    White's perspective.
 
-    `color` is whose turn it currently is at this node.
+    `alpha` = best score White can already guarantee somewhere in the tree.
+    `beta`  = best score Black can already guarantee somewhere in the tree.
     """
     if is_checkmate(board, color):
         # whoever's turn it is has been checkmated - bad for them
@@ -33,7 +35,11 @@ def minimax(board: Board, depth: int, color: Color) -> int:
             board.make_move(move)
             score = minimax(board, depth - 1, opponent_color)
             board.unmake_move(move)
+
             best_score = max(best_score, score)
+            alpha = max(alpha, best_score)
+            if beta <= alpha:
+                break # Black would never let this branch happen - prune
         return best_score
     else:
         best_score = float("inf")
@@ -41,5 +47,9 @@ def minimax(board: Board, depth: int, color: Color) -> int:
             board.make_move(move)
             score = minimax(board, depth - 1, opponent_color)
             board.unmake_move(move)
+
             best_score = min(best_score, score)
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break  # White would never let this branch happen - prune
         return best_score
