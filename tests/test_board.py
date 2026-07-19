@@ -13,6 +13,7 @@ from engine.move_generation import (
 from engine.board import Board
 from engine.constants import Color, PieceType, Square
 from engine.evaluate import evaluate_material
+from engine.search import minimax, CHECKMATE_SCORE
 
 
 def test_new_board_has_no_pieces():
@@ -683,3 +684,29 @@ def test_black_up_material_gives_negative_score():
     board.set_piece(Color.Black, PieceType.ROOK, Square.A8)
 
     assert evaluate_material(board) == -5
+
+def test_minimax_finds_immediate_capture_value():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.E1)
+    board.set_piece(Color.Black, PieceType.KING, Square.E8)
+    board.set_piece(Color.White, PieceType.KNIGHT, Square.E4)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F6)
+    board.side_to_move = Color.White
+
+    score = minimax(board, depth=1, color=Color.White)
+    assert score >= 1  # capturing the pawn should be found as beneficial
+
+
+def test_minimax_detects_checkmate_in_one():
+    # White to move: Re1-e8# is a standard back-rank checkmate
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.A1)
+    board.set_piece(Color.White, PieceType.ROOK, Square.E1)
+    board.set_piece(Color.Black, PieceType.KING, Square.G8)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.F7)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.G7)
+    board.set_piece(Color.Black, PieceType.PAWN, Square.H7)
+    board.side_to_move = Color.White
+
+    score = minimax(board, depth=1, color=Color.White)
+    assert score == CHECKMATE_SCORE
