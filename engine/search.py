@@ -1,3 +1,6 @@
+import time
+
+
 from engine.board import Board
 from engine.constants import Color
 from engine.evaluate import evaluate_material
@@ -53,3 +56,51 @@ def minimax(board: Board, depth: int, color: Color, alpha: float = -float("inf")
             if beta <= alpha:
                 break  # White would never let this branch happen - prune
         return best_score
+    
+
+def find_best_move(board: Board, color: Color, max_depth: int = 4, time_limit_seconds: float = 5.0) -> int:
+    """
+    Searches increasingly deeper (1, 2, 3, ... up to max_depth), stopping
+    early if time_limit_seconds is exceeded. Returns the best move found
+    at the deepest depth that was fully completed.
+    """
+    start_time = time.time()
+    best_move = None
+
+    legal_moves = order_moves(generate_legal_moves(board, color))
+    if not legal_moves:
+        return None  # no legal moves - checkmate or stalemate
+
+    opponent_color = Color.Black if color == Color.White else Color.White
+
+    # Iterative deepening
+    for depth in range(1, max_depth + 1):
+        if time.time() - start_time > time_limit_seconds:
+            break
+
+        current_best_move = None
+        current_best_score = -float("inf") if color == Color.White else float("inf")
+
+        for move in legal_moves:
+            # time check inside loops to stop quickly if we've run out
+            if time.time() - start_time > time_limit_seconds:
+                break
+
+            board.make_move(move)
+            score = minimax(board, depth - 1, opponent_color)
+            board.unmake_move(move)
+
+            if color == Color.White:
+                if score > current_best_score:
+                    current_best_score = score
+                    current_best_move = move
+            else:
+                if score < current_best_score:
+                    current_best_score = score
+                    current_best_move = move
+
+        # If we completed this depth (i.e., didn't hit time limit mid-depth), update best_move
+        if time.time() - start_time <= time_limit_seconds and current_best_move is not None:
+            best_move = current_best_move
+
+    return best_move
