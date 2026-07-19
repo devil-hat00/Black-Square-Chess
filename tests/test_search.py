@@ -1,6 +1,6 @@
 from engine.board import Board
 from engine.constants import Color, PieceType, Square
-from engine.search import minimax, CHECKMATE_SCORE, find_best_move, generate_legal_moves
+from engine.search import minimax, CHECKMATE_SCORE, find_best_move, generate_legal_moves, find_move_for_difficulty, DIFFICULTY_LEVELS
 from engine.move_generation import decode_move
 
 
@@ -113,4 +113,37 @@ def test_find_best_move_returns_none_on_checkmate():
     board.side_to_move = Color.White
 
     move = find_best_move(board, Color.White, max_depth=2, time_limit_seconds=5.0)
+    assert move is None
+
+def test_difficulty_level_1_uses_shallow_depth():
+    settings = DIFFICULTY_LEVELS[1]
+    assert settings["depth"] == 1
+
+
+def test_difficulty_level_10_uses_deepest_search_and_no_mistakes():
+    settings = DIFFICULTY_LEVELS[10]
+    assert settings["depth"] == 6
+    assert settings["mistake_chance"] == 0.0
+
+
+def test_find_move_for_difficulty_returns_legal_move():
+    board = Board()
+    board.setup_standard_position()
+
+    move = find_move_for_difficulty(board, Color.White, level=1, time_limit_seconds=5.0)
+    legal_moves = generate_legal_moves(board, Color.White)
+
+    assert move in legal_moves
+
+
+def test_find_move_for_difficulty_returns_none_on_checkmate():
+    board = Board()
+    board.set_piece(Color.White, PieceType.KING, Square.G1)
+    board.set_piece(Color.White, PieceType.PAWN, Square.F2)
+    board.set_piece(Color.White, PieceType.PAWN, Square.G2)
+    board.set_piece(Color.White, PieceType.PAWN, Square.H2)
+    board.set_piece(Color.Black, PieceType.ROOK, Square.A1)
+    board.side_to_move = Color.White
+
+    move = find_move_for_difficulty(board, Color.White, level=5, time_limit_seconds=5.0)
     assert move is None

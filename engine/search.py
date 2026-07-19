@@ -1,4 +1,5 @@
 import time
+import random
 
 
 from engine.board import Board
@@ -104,3 +105,33 @@ def find_best_move(board: Board, color: Color, max_depth: int = 4, time_limit_se
             best_move = current_best_move
 
     return best_move
+
+DIFFICULTY_LEVELS = {
+    1: {"depth": 1, "mistake_chances": 0.40},
+    2: {"depth": 1, "mistake_chance": 0.30},
+    3: {"depth": 2, "mistake_chance": 0.25},
+    4: {"depth": 2, "mistake_chance": 0.15},
+    5: {"depth": 3, "mistake_chance": 0.10},
+    6: {"depth": 3, "mistake_chance": 0.05},
+    7: {"depth": 4, "mistake_chance": 0.03},
+    8: {"depth": 4, "mistake_chance": 0.01},
+    9: {"depth": 5, "mistake_chance": 0.0},
+    10: {"depth": 6, "mistake_chance": 0.0},
+}
+
+def find_move_for_difficulty(board: Board, color: Color, level: int, time_limit_seconds: float = 5.0) -> int:
+    """
+    Picks a move for the CPU based on a difficulty level (1-10).
+    Lower levels search less deep and sometimes pick a random legal
+    move instead of the best one, to feel more human and beatable.
+    """
+    settings = DIFFICULTY_LEVELS[level]
+
+    legal_moves = generate_legal_moves(board, color)
+    if not legal_moves:
+        return None
+    
+    if random.random() < settings["mistake_chances"]:
+        return random.choice(legal_moves)
+    
+    return find_best_move(board, color, max_depth=settings["depth"], time_limit_seconds=time_limit_seconds)
