@@ -1,7 +1,7 @@
 from engine.board import Board
 from engine.constants import Color
 from engine.evaluate import evaluate_material
-from engine.move_generation import generate_legal_moves, is_checkmate, is_stalemate
+from engine.move_generation import generate_legal_moves, is_checkmate, is_stalemate, order_moves
 
 CHECKMATE_SCORE = 100_000
 
@@ -25,7 +25,7 @@ def minimax(board: Board, depth: int, color: Color, alpha: float = -float("inf")
     if depth == 0:
         return evaluate_material(board)
     
-    legal_moves = generate_legal_moves(board, color)
+    legal_moves = order_moves(generate_legal_moves(board, color))
     opponent_color = Color.Black if color == Color.White else Color.White
 
 

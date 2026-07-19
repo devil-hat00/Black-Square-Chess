@@ -1,6 +1,6 @@
 from engine.board import Board
 from engine.constants import Color, PieceType, Square, iterate_set_bits, square_to_rank_file, rank_file_to_square
-from engine.move import encode_move, MoveFlag, NO_PIECE
+from engine.move import encode_move, decode_move, MoveFlag, NO_PIECE
 
 
 
@@ -340,12 +340,37 @@ def generate_legal_moves(board: Board, color:Color) -> list[int]:
 
     legal_moves = []
     for move in pseudo_legal_moves:
+        decoded = decode_move(move)
+        if decoded["captured_type"] == PieceType.KING:
+            continue # capturing the king is never a real chess move
+    
         board.make_move(move)
         if not is_king_in_check(board, color):
             legal_moves.append(move)
         board.unmake_move(move)
 
+
     return legal_moves
+
+def order_moves(moves: list[int]) -> list[int]:
+    """
+    Reorders moves to try captures before quiet moves, improving
+    alpha-beta pruning effectiveness (stronger moves found earlier
+    let the search cut off more branches sooner).
+    """
+    captures = []
+    quiet_moves = []
+
+    for move in moves:
+        decoded = decode_move(move)
+        if decoded["captured_type"] != NO_PIECE:
+            captures.append(move)
+        else:
+            quiet_moves.append(move)
+
+    return captures + quiet_moves
+
+
 
 
 def is_checkmate(board: Board, color: Color) -> bool:
